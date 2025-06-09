@@ -1,0 +1,10 @@
+server:
+  port: 8080
+spring:
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  application:
+    name: Bitrix24
+    url: ${APPLICATION_URL_BASE:http://localhost:8080}
+    fe-url: http://localhost:5174
+  
