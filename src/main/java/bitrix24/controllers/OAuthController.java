@@ -1,42 +1,51 @@
 package bitrix24.controllers;
 
 import java.util.Map;
+import java.util.Optional;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.servlet.view.RedirectView;
+import bitrix24.entities.BitrixOAuthResponse;
+import bitrix24.services.TokenService;
+import lombok.extern.log4j.Log4j2;
 
+@Log4j2
 @RestController
 @RequestMapping("/oauth")
 public class OAuthController {
 
-    private final RestTemplate restTemplate = new RestTemplate();
-    private final String clientId = "<YOUR_CLIENT_ID>";
-    private final String clientSecret = "<YOUR_CLIENT_SECRET>";
+  private final TokenService tokenService;
 
-    @GetMapping("/install")
-    public RedirectView install(@RequestParam Map<String, String> params) {
-        String redirectUrl = "https://oauth.bitrix.info/oauth/token/?" +
-            "grant_type=authorization_code" +
-            "&client_id=" + clientId +
-            "&client_secret=" + clientSecret +
-            "&code=" + params.get("code");
+  public OAuthController(TokenService tokenService) {
+    this.tokenService = tokenService;
+  }
 
-        ResponseEntity<Map> response = restTemplate.getForEntity(redirectUrl, Map.class);
-        Map<String, Object> tokens = response.getBody();
+  @PostMapping("/install")
+  public ResponseEntity<String> handleInstall(
+      @RequestParam("AUTH_ID") String accessToken,
+      @RequestParam("REFRESH_ID") String refreshToken,
+      @RequestParam("AUTH_EXPIRES") int expiresIn,
+      @RequestParam("member_id") String userId,
+      @RequestParam("PLACEMENT_OPTIONS") Optional<String> placementOptions,
+      @RequestParam("status") Optional<String> status) {
+    log.info("Received install request with AUTH_ID={}, REFRESH_ID={}, expires in {}s", accessToken, refreshToken,
+        expiresIn);
 
-        // Save tokens: access_token, refresh_token, expires_in
-        saveTokens(tokens);
+    BitrixOAuthResponse token = new BitrixOAuthResponse();
+    token.setAccess_token(accessToken);
+    token.setRefresh_token(refreshToken);
+    token.setExpires_in(expiresIn);
+    token.setUser_id(userId);
+    token.setDomain(tokenService.bitrixConfig.domain);
 
-        return new RedirectView("/installed"); // your React success page
-    }
+    tokenService.saveToken(token);
 
-    private void saveTokens(Map<String, Object> tokens) {
-        // Save to DB or file
-    }
+    return ResponseEntity.ok("Bitrix app installed successfully!");
+  }
+
 }
-
