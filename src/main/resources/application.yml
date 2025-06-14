@@ -6,4 +6,7 @@ spring:
   application:
     name: Bitrix24
     url: http://localhost:8080
-  
+bitrix:
+  client-id: #<Your Client ID>
+  client-secret: #<Your Client Secret>
+  domain: #<Your Bitrix24 Domain>

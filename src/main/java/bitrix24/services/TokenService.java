@@ -1,11 +1,14 @@
 package bitrix24.services;
 
 import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import bitrix24.configs.BitrixConfig;
@@ -30,14 +33,42 @@ public class TokenService {
 
     public BitrixOAuthResponse exchangeAuthCode(String code) {
         String url = "https://oauth.bitrix.info/oauth/token/";
+        RestTemplate restTemplate = new RestTemplate();
 
-        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-        formData.add("grant_type", "authorization_code");
-        formData.add("client_id", bitrixConfig.clientId);
-        formData.add("client_secret", bitrixConfig.clientSecret);
-        formData.add("code", code);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
-        return restTemplate.postForObject(url, formData, BitrixOAuthResponse.class);
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("grant_type", "authorization_code");
+        form.add("client_id", bitrixConfig.clientId);
+        form.add("client_secret", bitrixConfig.clientSecret);
+        form.add("code", code);
+
+        log.info("Attempting token exchange...");
+        log.info("Form data: {}", form);
+
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(form, headers);
+
+        try {
+            ResponseEntity<BitrixOAuthResponse> response = restTemplate.postForEntity(
+                    url, request, BitrixOAuthResponse.class);
+
+            log.info("Token exchange successful. Status: {}", response.getStatusCode());
+
+            BitrixOAuthResponse body = response.getBody();
+            if (body == null) {
+                throw new RuntimeException("Received empty response body from Bitrix token endpoint.");
+            }
+            return body;
+
+        } catch (HttpClientErrorException e) {
+            log.error("Token exchange failed with status {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new RuntimeException("Token exchange failed: " + e.getMessage(), e);
+
+        } catch (Exception e) {
+            log.error("Unexpected error during token exchange", e);
+            throw new RuntimeException("Unexpected error during token exchange", e);
+        }
     }
 
     public BitrixOAuthResponse refreshToken(String refreshToken) {
@@ -82,7 +113,7 @@ public class TokenService {
         if ((now - createdAt) > (1000 * 60 * 55)) {
             BitrixOAuthResponse refreshed = refreshToken(token.getRefresh_token());
             storageService.saveToken(refreshed);
-            System.out.println("Token refreshed");
+            log.info("Token refreshed at {}", now);
         }
     }
 }
