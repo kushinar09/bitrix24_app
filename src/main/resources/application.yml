@@ -11,4 +11,4 @@ spring:
 bitrix:
   client-id: #<Your Client ID>
   client-secret: #<Your Client Secret>
-  domain: #<Your Bitrix24 Domain>
+  domain: #<Your Bitrix24 Domain> e.g. 'https://abc.bitrix24.com'
