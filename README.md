@@ -12,8 +12,7 @@
 ## 2. Clone project
 
 ```bash
-git clone <URL_REPO_BACKEND>
-cd backend
+git clone https://github.com/kushinar09/bitrix24_app
 ```
 
 ## 3. Cấu hình ứng dụng
