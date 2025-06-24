@@ -28,6 +28,7 @@ public class TokenService {
 
     public TokenService(TokenStorageService storageService, BitrixConfig bitrixConfig) {
         this.storageService = storageService;
+        log.info("Initializing TokenService with BitrixConfig: {}", bitrixConfig.domain);
         this.bitrixConfig = bitrixConfig;
     }
 
@@ -59,6 +60,7 @@ public class TokenService {
             if (body == null) {
                 throw new RuntimeException("Received empty response body from Bitrix token endpoint.");
             }
+            body.setDomain(bitrixConfig.domain);
             return body;
 
         } catch (HttpClientErrorException e) {
@@ -71,14 +73,14 @@ public class TokenService {
         }
     }
 
-    public BitrixOAuthResponse refreshToken(String refreshToken) {
+    public BitrixOAuthResponse refreshToken() {
+        String refreshToken = storageService.loadToken().getRefresh_token();
         String url = "https://oauth.bitrix.info/oauth/token/";
 
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("grant_type", "refresh_token");
         formData.add("client_id", bitrixConfig.clientId);
         formData.add("client_secret", bitrixConfig.clientSecret);
-        formData.add("domain", bitrixConfig.domain);
         formData.add("refresh_token", refreshToken);
 
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(formData,
@@ -88,11 +90,19 @@ public class TokenService {
 
         if (response.getStatusCode().is2xxSuccessful()) {
             BitrixOAuthResponse newToken = response.getBody();
-            saveToken(newToken);
-            log.info("Token refreshed successfully");
-            return newToken;
+            if (newToken != null) {
+                newToken.setDomain(bitrixConfig.domain);
+                saveToken(newToken);
+                log.info("Token refreshed successfully");
+                return newToken;
+            } else {
+                log.error("Failed to refresh token: response body is null");
+                saveToken(null);
+                return null;
+            }
         } else {
             log.error("Failed to refresh token: {}", response.getStatusCode());
+            saveToken(null);
         }
 
         return restTemplate.postForObject(url, formData, BitrixOAuthResponse.class);
@@ -111,7 +121,7 @@ public class TokenService {
         long createdAt = new File("bitrix_token.json").lastModified();
         long now = System.currentTimeMillis();
         if ((now - createdAt) > (1000 * 60 * 55)) {
-            BitrixOAuthResponse refreshed = refreshToken(token.getRefresh_token());
+            BitrixOAuthResponse refreshed = refreshToken();
             storageService.saveToken(refreshed);
             log.info("Token refreshed at {}", now);
         }

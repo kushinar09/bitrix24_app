@@ -6,6 +6,8 @@ spring:
   application:
     name: Bitrix24
     url: http://localhost:8080
+    fe-url: http://localhost:5174 
+    ngrok-url: https://kangaroo-cute-halibut.ngrok-free.app  
 bitrix:
   client-id: #<Your Client ID>
   client-secret: #<Your Client Secret>

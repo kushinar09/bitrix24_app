@@ -1,13 +1,12 @@
 package bitrix24.controllers;
 
-import java.util.Map;
 import java.util.Optional;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -21,6 +20,9 @@ import lombok.extern.log4j.Log4j2;
 public class OAuthController {
 
   private final TokenService tokenService;
+
+  @Value("${spring.application.fe-url}")
+  private String frontendUrl;
 
   public OAuthController(TokenService tokenService) {
     this.tokenService = tokenService;
@@ -62,7 +64,8 @@ public class OAuthController {
       // Save token to file
       tokenService.saveToken(token);
 
-      return ResponseEntity.ok("App installed successfully via link.");
+      return ResponseEntity
+          .ok("<d>App installed successfully via link.</d><a href='" + frontendUrl + "'>Click here to continue</a>");
     } catch (Exception e) {
       e.printStackTrace();
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
